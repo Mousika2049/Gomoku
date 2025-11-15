@@ -2,7 +2,7 @@
 
 class Evaluate
 {
-    //边界检查辅助函数
+    //边界检查辅助函数 
     static private bool IsOnBoard(int x, int y)
     {
         return x > 0 && x <= 15 && y > 0 && y <= 15;
@@ -111,23 +111,22 @@ class Evaluate
         int total = 0;
         foreach (int[] i in Directions)
         {
-            if (CountOnLine(i, location).Sum() == 5)
+            int[] counts = CountOnLine(i, location);
+            if (counts.Sum() == 5)
             {
-                if (CountOnLine(i, location)[0] != 0 && CountOnLine(i, location)[1] != 0)
+                if (counts[0] != 0 && counts[1] != 0)
                 {
                     continue;
                 }
-                if (CountOnLine(i, location)[0] != 0)
+                if (counts[0] != 0)
                 {
-                    total += aiPatternScore[CountOnLine(i, location)[0]];
+                    total += aiPatternScore[counts[0]];
                 }
-                if (CountOnLine(i, location)[1] != 0)
+                if (counts[1] != 0)
                 {
-                    total += humanPatternScore[CountOnLine(i, location)[1]];
+                    total += humanPatternScore[counts[1]];
                 }
             }
-
-
         }
         return total;
     }
@@ -152,19 +151,8 @@ class Evaluate
 
 public static class AI
 {
-    static public int MiniMax(List<List<string>> board, int depth, bool isMaximizingPlayer, string aiPlayer, string humanPlayer, int alpha = int.MinValue, int beta = int.MaxValue)
+    static public List<int[]> GetOptimizedMoves(List<List<string>> board, string aiPlayer, string humanPlayer)
     {
-        //如果模拟下一子能够凑成5子，说明已经赢了或者输了，不需要递归模拟
-        int boardScore = Evaluate.EvaluateBoard(board, aiPlayer, humanPlayer);
-        if (boardScore >= 1000000 || boardScore <= -1000000)
-        {
-            return boardScore;
-        }
-        if (depth == 0)
-        {
-            return boardScore;
-        }
-
         //设置一个搜索窗口，将搜索范围缩小到有棋子的周围一定区域，减少无用的循环次数
         //二维布尔数组如果不声明布尔值，默认值是false
         bool[,] searchWindow = new bool[15, 15];
@@ -205,15 +193,29 @@ public static class AI
                 }
             }
         }
+        return optimizedMove;
 
+    }
+    static public int MiniMax(List<List<string>> board, int depth, bool isMaximizingPlayer, string aiPlayer, string humanPlayer, int alpha = int.MinValue, int beta = int.MaxValue)
+    {
+        //如果模拟下一子能够凑成5子，说明已经赢了或者输了，不需要递归模拟
+        int boardScore = Evaluate.EvaluateBoard(board, aiPlayer, humanPlayer);
+        if (boardScore >= 1000000 || boardScore <= -1000000)
+        {
+            return boardScore;
+        }
+        if (depth == 0)
+        {
+            return boardScore;
+        }
 
-        //var sortedMove = optimizedMove.OrderByDescending(k => k[2]);
+        var optimizedMoves = GetOptimizedMoves(board, "O", "@");
         if (isMaximizingPlayer)
         {
             int bestScore = int.MinValue;
-            var sortedMove = optimizedMove.OrderByDescending(k => k[2]);
+            var sortedMoves = optimizedMoves.OrderByDescending(k => k[2]);
 
-            foreach (var move in sortedMove)
+            foreach (var move in sortedMoves)
             {
                 board[move[0]][move[1]] = aiPlayer;
                 int score = MiniMax(board, depth - 1, false, aiPlayer, humanPlayer, alpha, beta);
@@ -231,9 +233,9 @@ public static class AI
         else
         {
             int bestScore = int.MaxValue;
-            var sortedMove = optimizedMove.OrderByDescending(k => k[2]);
+            var sortedMoves = optimizedMoves.OrderByDescending(k => k[2]);
 
-            foreach (var move in sortedMove)
+            foreach (var move in sortedMoves)
             {
                 board[move[0]][move[1]] = humanPlayer;
                 int score = MiniMax(board, depth - 1, true, aiPlayer, humanPlayer, alpha, beta);
@@ -256,52 +258,12 @@ public static class AI
         int[] bestMove = [-1, -1];
 
         //设置模拟深度
-        const int DEPTH = 4;
+        const int DEPTH = 3;
 
-        //设置一个搜索窗口，将搜索范围缩小到有棋子的周围一定区域，减少无用的循环次数
-        //二维布尔数组如果不声明布尔值，默认值是false
-        bool[,] searchWindow = new bool[15, 15];
-        for (int r = 0; r < 15; r++)
-        {
-            for (int c = 0; c < 15; c++)
-            {
-                if (board[r][c] != "+")
-                {
-                    //扫描周围5x5区域
-                    for (int a = -2; a <= 2; a++)
-                    {
-                        for (int b = -2; b <= 2; b++)
-                        {
-                            int new_r = r + a;
-                            int new_c = c + b;
-                            if (new_r >= 0 && new_r < 15 && new_c >= 0 && new_c < 15 && board[new_r][new_c] == "+")
-                            {
-                                searchWindow[new_r, new_c] = true;
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        var optimizedMoves = GetOptimizedMoves(board, "O", "@");
+        var sortedMoves = optimizedMoves.OrderByDescending(k => k[2]);
 
-        List<int[]> optimizedMove = [];
-        for (int r = 0; r < 15; r++)
-        {
-            for (int c = 0; c < 15; c++)
-            {
-                if (board[r][c] == "+" && searchWindow[r, c])
-                {
-                    board[r][c] = aiPlayer;
-                    int onedepthScore = MiniMax(board, 0, false, aiPlayer, humanPlayer, int.MinValue, int.MaxValue);
-                    board[r][c] = "+";
-                    optimizedMove.Add([r, c, onedepthScore]);
-                }
-            }
-        }
-
-        var sortedMove = optimizedMove.OrderByDescending(k => k[2]);
-
-        foreach (var move in sortedMove)
+        foreach (var move in sortedMoves)
         {
             board[move[0]][move[1]] = aiPlayer;
             int moveScore = MiniMax(board, DEPTH - 1, false, aiPlayer, humanPlayer, int.MinValue, int.MaxValue);
