@@ -156,7 +156,7 @@ public static class AI
     {
         //如果模拟下一子能够凑成5子，说明已经赢了或者输了，不需要递归模拟
         int boardScore = Evaluate.EvaluateBoard(board, aiPlayer, humanPlayer);
-        if (boardScore>=1000000 || boardScore <= -1000000)
+        if (boardScore >= 1000000 || boardScore <= -1000000)
         {
             return boardScore;
         }
@@ -165,55 +165,86 @@ public static class AI
             return boardScore;
         }
 
-        if (isMaximizingPlayer)
+        //设置一个搜索窗口，将搜索范围缩小到有棋子的周围一定区域，减少无用的循环次数
+        //二维布尔数组如果不声明布尔值，默认值是false
+        bool[,] searchWindow = new bool[15, 15];
+        for (int r = 0; r < 15; r++)
         {
-            int bestScore = int.MinValue;
-
-            for (int r = 0; r < 15; r++)
+            for (int c = 0; c < 15; c++)
             {
-                for (int c = 0; c < 15; c++)
+                if (board[r][c] != "+")
                 {
-                    if (board[r][c] == "+")
+                    //扫描周围5x5区域
+                    for (int a = -2; a <= 2; a++)
                     {
-                        board[r][c] = aiPlayer;
-                        int score = MiniMax(board, depth - 1, false, aiPlayer, humanPlayer, alpha, beta);
-                        board[r][c] = "+";
-                        bestScore = int.Max(bestScore, score);
-                        alpha = Math.Max(alpha, bestScore);
-
-                        if (beta <= alpha)
+                        for (int b = -2; b <= 2; b++)
                         {
-                            break;
+                            int new_r = r + a;
+                            int new_c = c + b;
+                            if (new_r >= 0 && new_r < 15 && new_c >= 0 && new_c < 15 && board[new_r][new_c] == "+")
+                            {
+                                searchWindow[new_r, new_c] = true;
+                            }
                         }
                     }
                 }
-                if (beta <= alpha) break;
+            }
+        }
+
+        List<int[]> optimizedMove = [];
+        for (int r = 0; r < 15; r++)
+        {
+            for (int c = 0; c < 15; c++)
+            {
+                if (board[r][c] == "+" && searchWindow[r, c])
+                {
+                    board[r][c] = aiPlayer;
+                    int onedepthScore = MiniMax(board, 0, false, aiPlayer, humanPlayer, int.MinValue, int.MaxValue);
+                    board[r][c] = "+";
+                    optimizedMove.Add([r, c, onedepthScore]);
+                }
+            }
+        }
+
+
+        //var sortedMove = optimizedMove.OrderByDescending(k => k[2]);
+        if (isMaximizingPlayer)
+        {
+            int bestScore = int.MinValue;
+            var sortedMove = optimizedMove.OrderByDescending(k => k[2]);
+
+            foreach (var move in sortedMove)
+            {
+                board[move[0]][move[1]] = aiPlayer;
+                int score = MiniMax(board, depth - 1, false, aiPlayer, humanPlayer, alpha, beta);
+                board[move[0]][move[1]] = "+";
+                bestScore = int.Max(bestScore, score);
+                alpha = Math.Max(alpha, bestScore);
+
+                if (beta <= alpha)
+                {
+                    break;
+                }
             }
             return bestScore;
         }
         else
         {
             int bestScore = int.MaxValue;
+            var sortedMove = optimizedMove.OrderByDescending(k => k[2]);
 
-            for (int r = 0; r < 15; r++)
+            foreach (var move in sortedMove)
             {
-                for (int c = 0; c < 15; c++)
-                {
-                    if (board[r][c] == "+")
-                    {
-                        board[r][c] = humanPlayer;
-                        int score = MiniMax(board, depth - 1, true, aiPlayer, humanPlayer, alpha, beta);
-                        board[r][c] = "+";
-                        bestScore = int.Min(bestScore, score);
-                        beta = Math.Min(beta, bestScore);
+                board[move[0]][move[1]] = humanPlayer;
+                int score = MiniMax(board, depth - 1, true, aiPlayer, humanPlayer, alpha, beta);
+                board[move[0]][move[1]] = "+";
+                bestScore = int.Min(bestScore, score);
+                beta = Math.Min(beta, bestScore);
 
-                        if (beta <= alpha)
-                        {
-                            break;
-                        }
-                    }
+                if (beta <= alpha)
+                {
+                    break;
                 }
-                if (beta <= alpha) break;
             }
             return bestScore;
         }
@@ -224,26 +255,64 @@ public static class AI
         int bestScore = int.MinValue;
         int[] bestMove = [-1, -1];
 
-        const int DEPTH = 2;
+        //设置模拟深度
+        const int DEPTH = 4;
 
+        //设置一个搜索窗口，将搜索范围缩小到有棋子的周围一定区域，减少无用的循环次数
+        //二维布尔数组如果不声明布尔值，默认值是false
+        bool[,] searchWindow = new bool[15, 15];
         for (int r = 0; r < 15; r++)
         {
             for (int c = 0; c < 15; c++)
             {
-                if (board[r][c] == "+")
+                if (board[r][c] != "+")
                 {
-                    board[r][c] = aiPlayer;
-                    int moveScore = MiniMax(board, DEPTH, false, aiPlayer, humanPlayer, int.MinValue, int.MaxValue);
-                    board[r][c] = "+";
-                    if (moveScore > bestScore)
+                    //扫描周围5x5区域
+                    for (int a = -2; a <= 2; a++)
                     {
-                        bestScore = moveScore;
-                        bestMove = [r, c];
+                        for (int b = -2; b <= 2; b++)
+                        {
+                            int new_r = r + a;
+                            int new_c = c + b;
+                            if (new_r >= 0 && new_r < 15 && new_c >= 0 && new_c < 15 && board[new_r][new_c] == "+")
+                            {
+                                searchWindow[new_r, new_c] = true;
+                            }
+                        }
                     }
                 }
             }
-
         }
+
+        List<int[]> optimizedMove = [];
+        for (int r = 0; r < 15; r++)
+        {
+            for (int c = 0; c < 15; c++)
+            {
+                if (board[r][c] == "+" && searchWindow[r, c])
+                {
+                    board[r][c] = aiPlayer;
+                    int onedepthScore = MiniMax(board, 0, false, aiPlayer, humanPlayer, int.MinValue, int.MaxValue);
+                    board[r][c] = "+";
+                    optimizedMove.Add([r, c, onedepthScore]);
+                }
+            }
+        }
+
+        var sortedMove = optimizedMove.OrderByDescending(k => k[2]);
+
+        foreach (var move in sortedMove)
+        {
+            board[move[0]][move[1]] = aiPlayer;
+            int moveScore = MiniMax(board, DEPTH - 1, false, aiPlayer, humanPlayer, int.MinValue, int.MaxValue);
+            board[move[0]][move[1]] = "+";
+            if (moveScore > bestScore)
+            {
+                bestScore = moveScore;
+                bestMove = [move[0], move[1]];
+            }
+        }
+
         Console.WriteLine($"AI 选择了 [{bestMove[1] + 1}, {15 - bestMove[0]}]。评估分数: {bestScore}");
         return bestMove;
     }
