@@ -252,6 +252,17 @@ public static class AI
         }
     }
 
+    //添加辅助的深拷贝函数，目的是多线程
+    static private List<List<string>> DeepCopyBoard(List<List<string>> board)
+    {
+        var copiedBoard = new List<List<string>>(board.Count);
+        foreach (var list in board)
+        {
+            copiedBoard.Add(new List<string>(list));
+        }
+        return copiedBoard;
+    }
+
     static public int[] FindBestMove(List<List<string>> board, string aiPlayer, string humanPlayer)
     {
         int bestScore = int.MinValue;
@@ -263,17 +274,18 @@ public static class AI
         var optimizedMoves = GetOptimizedMoves(board, "O", "@");
         var sortedMoves = optimizedMoves.OrderByDescending(k => k[2]);
 
-        foreach (var move in sortedMoves)
+        var moveScores = sortedMoves.AsParallel().Select(move =>
         {
-            board[move[0]][move[1]] = aiPlayer;
-            int moveScore = MiniMax(board, DEPTH - 1, false, aiPlayer, humanPlayer, int.MinValue, int.MaxValue);
-            board[move[0]][move[1]] = "+";
-            if (moveScore > bestScore)
-            {
-                bestScore = moveScore;
-                bestMove = [move[0], move[1]];
-            }
-        }
+            List<List<string>> parallelBoard = DeepCopyBoard(board);
+            parallelBoard[move[0]][move[1]] = aiPlayer;
+            int moveScore = MiniMax(parallelBoard, DEPTH - 1, false, aiPlayer, humanPlayer, int.MinValue, int.MaxValue);
+            return new { Move = move, Score = moveScore };
+        }).ToList();
+
+        var sortedResult = moveScores.OrderByDescending(k => k.Score).First();
+
+        bestScore = sortedResult.Score;
+        bestMove = [sortedResult.Move[0], sortedResult.Move[1]];
 
         Console.WriteLine($"AI 选择了 [{bestMove[1] + 1}, {15 - bestMove[0]}]。评估分数: {bestScore}");
         return bestMove;
