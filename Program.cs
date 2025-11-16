@@ -53,43 +53,8 @@ class Evaluate
         return false;
     }
 
-    //统计
-    static public int GetScoreForLine(int[] location, List<List<string>> board)
-    {
-        int[] CountOnLine(int[] direction, int[] location, string aiPlayer = "O", string humanPlayer = "@")
-        {
-            int d_x = direction[0];
-            int d_y = direction[1];
-
-            int aiCount = 0;
-            int humanCount = 0;
-            int emptyCount = 0;
-            for (int j = 0; j <= 4; j++)
-            {
-                if (IsOnBoard(location[0] + j * d_x, location[1] + j * d_y))
-                {
-                    if (board[15 - location[1] - j * d_y][location[0] - 1 + j * d_x] == aiPlayer)
-                    {
-                        aiCount++;
-                    }
-                    else if (board[15 - location[1] - j * d_y][location[0] - 1 + j * d_x] == humanPlayer)
-                    {
-                        humanCount++;
-                    }
-                    else
-                    {
-                        emptyCount++;
-                    }
-                }
-                else
-                {
-                    break;
-                }
-            }
-            return [aiCount, humanCount, emptyCount];
-        }
-        //权重计分板(ai视角，因为要模拟落点算分)
-        Dictionary<int, int> aiPatternScore = new()
+    //权重计分板(ai视角，因为要模拟落点算分)
+    static private readonly Dictionary<int, int> aiPatternScore = new()
         {
             {5,1000000 },
             {4,10000 },
@@ -97,7 +62,7 @@ class Evaluate
             {2,100 },
             {1,10 }
         };
-        Dictionary<int, int> humanPatternScore = new()
+    static private readonly Dictionary<int, int> humanPatternScore = new()
         {
             {5,-1000000 },
             {4,-50000 },
@@ -106,29 +71,24 @@ class Evaluate
             {1,-10 }
         };
 
-        //Directions
-        List<int[]> Directions = [[1, 0], [0, 1], [1, -1], [1, 1]];
-        int total = 0;
-        foreach (int[] i in Directions)
+    static public int GetWindowScore(List<string> window, string aiPlayer = "O", string humanPlayer = "@")
+    {
+        int aiCount = window.Count(k => k == aiPlayer);
+        int humanCount = window.Count(k => k == humanPlayer);
+
+        if (aiCount > 0 && humanCount > 0)
         {
-            int[] counts = CountOnLine(i, location);
-            if (counts.Sum() == 5)
-            {
-                if (counts[0] != 0 && counts[1] != 0)
-                {
-                    continue;
-                }
-                if (counts[0] != 0)
-                {
-                    total += aiPatternScore[counts[0]];
-                }
-                if (counts[1] != 0)
-                {
-                    total += humanPatternScore[counts[1]];
-                }
-            }
+            return 0;
         }
-        return total;
+        if (aiCount > 0)
+        {
+            return aiPatternScore[aiCount];
+        }
+        if (humanCount > 0)
+        {
+            return humanPatternScore[humanCount];
+        }
+        return 0;
     }
 
     //统计棋局评分
@@ -136,13 +96,42 @@ class Evaluate
     {
         int overallScore = 0;
 
-        // 遍历棋盘的每一个格子
-        for (int r = 0; r < 15; r++)
+        //之前是围绕 点 来做思路算分，现在改成按照 线 的思路，就是滑动窗口，减少开销
+        List<string> SlidingWindow = [];
+        //1.水平方向窗口
+        for (int a = 0; a < board.Count; a++)
         {
-            for (int c = 0; c < 15; c++)
+            for (int b = 0; b <= board[a].Count - 5; b++)
             {
-                int[] location = [c + 1, 15 - r];
-                overallScore += GetScoreForLine(location, board);
+                SlidingWindow = board[a][b..(b + 5)];
+                overallScore += GetWindowScore(SlidingWindow);
+            }
+        }
+        //2.垂直方向窗口
+        for (int a = 0; a <= board.Count - 5; a++)
+        {
+            for (int b = 0; b < board[a].Count; b++)
+            {
+                SlidingWindow = board[a..(a + 5)].Select(k => k[b]).ToList();
+                overallScore += GetWindowScore(SlidingWindow);
+            }
+        }
+        //3.主对角线方向窗口\
+        for (int a = 0; a <= board.Count - 5; a++)
+        {
+            for (int b = 0; b <= board[a].Count - 5; b++)
+            {
+                SlidingWindow = board[a..(a + 5)].Select((row, i) => row[i + b]).ToList();
+                overallScore += GetWindowScore(SlidingWindow);
+            }
+        }
+        //4.副对角线方向窗口/
+        for (int a = 0; a <= board.Count - 5; a++)
+        {
+            for (int b = 4; b < board.Count; b++)
+            {
+                SlidingWindow = board[a..(a + 5)].Select((row, i) => row[b - i]).ToList();
+                overallScore += GetWindowScore(SlidingWindow);
             }
         }
         return overallScore;
@@ -274,6 +263,7 @@ public static class AI
         var optimizedMoves = GetOptimizedMoves(board, "O", "@");
         var sortedMoves = optimizedMoves.OrderByDescending(k => k[2]);
 
+        //多线程并行计算
         var moveScores = sortedMoves.AsParallel().Select(move =>
         {
             List<List<string>> parallelBoard = DeepCopyBoard(board);
