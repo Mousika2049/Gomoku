@@ -8,7 +8,7 @@ class Evaluate
         return x > 0 && x <= 15 && y > 0 && y <= 15;
     }
 
-    static public bool CheckWin(int[] location, string player, List<List<string>> board)
+    static public bool CheckWin(int[] location, string player, string[,] board)
     {
         //direction参数
         //水平 (1,0)
@@ -23,7 +23,7 @@ class Evaluate
             int count = 1;
             for (int i = 1; i <= 4; i++)
             {
-                if (IsOnBoard(location[0] - i * d_x, location[1] - i * d_y) && board[15 - location[1] + i * d_y][location[0] - 1 - i * d_x] == player)
+                if (IsOnBoard(location[0] - i * d_x, location[1] - i * d_y) && board[15 - location[1] + i * d_y, location[0] - 1 - i * d_x] == player)
                 {
                     count++;
                 }
@@ -34,7 +34,7 @@ class Evaluate
             }
             for (int j = 1; j <= 4; j++)
             {
-                if (IsOnBoard(location[0] + j * d_x, location[1] + j * d_y) && board[15 - location[1] - j * d_y][location[0] - 1 + j * d_x] == player)
+                if (IsOnBoard(location[0] + j * d_x, location[1] + j * d_y) && board[15 - location[1] - j * d_y, location[0] - 1 + j * d_x] == player)
                 {
                     count++;
                 }
@@ -71,7 +71,7 @@ class Evaluate
             {1,-10 }
         };
 
-    static public int GetWindowScore(List<string> window, string aiPlayer = "O", string humanPlayer = "@")
+    static public int GetWindowScore(string[] window, string aiPlayer = "O", string humanPlayer = "@")
     {
         int aiCount = window.Count(k => k == aiPlayer);
         int humanCount = window.Count(k => k == humanPlayer);
@@ -92,46 +92,62 @@ class Evaluate
     }
 
     //统计棋局评分
-    static public int EvaluateBoard(List<List<string>> board, string aiPlayer = "O", string humanPlayer = "@")
+    static public int EvaluateBoard(string[,] board, string aiPlayer = "O", string humanPlayer = "@")
     {
         int overallScore = 0;
-
+        //List<List<string>> board = board.ToList();
+        string[] slidingWindow = new string[5];
         //之前是围绕 点 来做思路算分，现在改成按照 线 的思路，就是滑动窗口，减少开销
-        List<string> SlidingWindow = [];
         //1.水平方向窗口
-        for (int a = 0; a < board.Count; a++)
+        for (int a = 0; a < board.GetLength(0); a++)
         {
-            for (int b = 0; b <= board[a].Count - 5; b++)
+            for (int b = 0; b <= board.GetLength(1) - 5; b++)
             {
-                SlidingWindow = board[a][b..(b + 5)];
-                overallScore += GetWindowScore(SlidingWindow);
+                Array.Clear(slidingWindow, 0, 5);
+                for (int i = 0; i < 5; i++)
+                {
+                    slidingWindow[i] = board[a, b + i];
+                }
+                overallScore += GetWindowScore(slidingWindow);
             }
         }
         //2.垂直方向窗口
-        for (int a = 0; a <= board.Count - 5; a++)
+        for (int a = 0; a <= board.GetLength(0) - 5; a++)
         {
-            for (int b = 0; b < board[a].Count; b++)
+            for (int b = 0; b < board.GetLength(1); b++)
             {
-                SlidingWindow = board[a..(a + 5)].Select(k => k[b]).ToList();
-                overallScore += GetWindowScore(SlidingWindow);
+                Array.Clear(slidingWindow, 0, 5);
+                for (int i = 0; i < 5; i++)
+                {
+                    slidingWindow[i] = board[a + i, b];
+                }
+                overallScore += GetWindowScore(slidingWindow);
             }
         }
         //3.主对角线方向窗口\
-        for (int a = 0; a <= board.Count - 5; a++)
+        for (int a = 0; a <= board.GetLength(0) - 5; a++)
         {
-            for (int b = 0; b <= board[a].Count - 5; b++)
+            for (int b = 0; b <= board.GetLength(1) - 5; b++)
             {
-                SlidingWindow = board[a..(a + 5)].Select((row, i) => row[i + b]).ToList();
-                overallScore += GetWindowScore(SlidingWindow);
+                Array.Clear(slidingWindow, 0, 5);
+                for (int i = 0; i < 5; i++)
+                {
+                    slidingWindow[i] = board[a + i, b + i];
+                }
+                overallScore += GetWindowScore(slidingWindow);
             }
         }
         //4.副对角线方向窗口/
-        for (int a = 0; a <= board.Count - 5; a++)
+        for (int a = 0; a <= board.GetLength(0) - 5; a++)
         {
-            for (int b = 4; b < board.Count; b++)
+            for (int b = 4; b < board.GetLength(1); b++)
             {
-                SlidingWindow = board[a..(a + 5)].Select((row, i) => row[b - i]).ToList();
-                overallScore += GetWindowScore(SlidingWindow);
+                Array.Clear(slidingWindow, 0, 5);
+                for (int i = 0; i < 5; i++)
+                {
+                    slidingWindow[i] = board[a + i, b - i];
+                }
+                overallScore += GetWindowScore(slidingWindow);
             }
         }
         return overallScore;
@@ -140,7 +156,7 @@ class Evaluate
 
 public static class AI
 {
-    static public List<int[]> GetOptimizedMoves(List<List<string>> board, string aiPlayer, string humanPlayer)
+    static public List<int[]> GetOptimizedMoves(string[,] board, string aiPlayer, string humanPlayer)
     {
         //设置一个搜索窗口，将搜索范围缩小到有棋子的周围一定区域，减少无用的循环次数
         //二维布尔数组如果不声明布尔值，默认值是false
@@ -149,7 +165,7 @@ public static class AI
         {
             for (int c = 0; c < 15; c++)
             {
-                if (board[r][c] != "+")
+                if (board[r, c] != "+")
                 {
                     //扫描周围5x5区域
                     for (int a = -2; a <= 2; a++)
@@ -158,7 +174,7 @@ public static class AI
                         {
                             int new_r = r + a;
                             int new_c = c + b;
-                            if (new_r >= 0 && new_r < 15 && new_c >= 0 && new_c < 15 && board[new_r][new_c] == "+")
+                            if (new_r >= 0 && new_r < 15 && new_c >= 0 && new_c < 15 && board[new_r, new_c] == "+")
                             {
                                 searchWindow[new_r, new_c] = true;
                             }
@@ -173,11 +189,11 @@ public static class AI
         {
             for (int c = 0; c < 15; c++)
             {
-                if (board[r][c] == "+" && searchWindow[r, c])
+                if (board[r, c] == "+" && searchWindow[r, c])
                 {
-                    board[r][c] = aiPlayer;
+                    board[r, c] = aiPlayer;
                     int onedepthScore = MiniMax(board, 0, false, aiPlayer, humanPlayer, int.MinValue, int.MaxValue);
-                    board[r][c] = "+";
+                    board[r, c] = "+";
                     optimizedMove.Add([r, c, onedepthScore]);
                 }
             }
@@ -185,7 +201,7 @@ public static class AI
         return optimizedMove;
 
     }
-    static public int MiniMax(List<List<string>> board, int depth, bool isMaximizingPlayer, string aiPlayer, string humanPlayer, int alpha = int.MinValue, int beta = int.MaxValue)
+    static public int MiniMax(string[,] board, int depth, bool isMaximizingPlayer, string aiPlayer, string humanPlayer, int alpha = int.MinValue, int beta = int.MaxValue)
     {
         //如果模拟下一子能够凑成5子，说明已经赢了或者输了，不需要递归模拟
         int boardScore = Evaluate.EvaluateBoard(board, aiPlayer, humanPlayer);
@@ -206,9 +222,9 @@ public static class AI
 
             foreach (var move in sortedMoves)
             {
-                board[move[0]][move[1]] = aiPlayer;
+                board[move[0], move[1]] = aiPlayer;
                 int score = MiniMax(board, depth - 1, false, aiPlayer, humanPlayer, alpha, beta);
-                board[move[0]][move[1]] = "+";
+                board[move[0], move[1]] = "+";
                 bestScore = int.Max(bestScore, score);
                 alpha = Math.Max(alpha, bestScore);
 
@@ -226,9 +242,9 @@ public static class AI
 
             foreach (var move in sortedMoves)
             {
-                board[move[0]][move[1]] = humanPlayer;
+                board[move[0], move[1]] = humanPlayer;
                 int score = MiniMax(board, depth - 1, true, aiPlayer, humanPlayer, alpha, beta);
-                board[move[0]][move[1]] = "+";
+                board[move[0], move[1]] = "+";
                 bestScore = int.Min(bestScore, score);
                 beta = Math.Min(beta, bestScore);
 
@@ -242,17 +258,12 @@ public static class AI
     }
 
     //添加辅助的深拷贝函数，目的是多线程
-    static private List<List<string>> DeepCopyBoard(List<List<string>> board)
+    static private string[,] DeepCopyBoard(string[,] board)
     {
-        var copiedBoard = new List<List<string>>(board.Count);
-        foreach (var list in board)
-        {
-            copiedBoard.Add(new List<string>(list));
-        }
-        return copiedBoard;
+        return (string[,])board.Clone();
     }
 
-    static public int[] FindBestMove(List<List<string>> board, string aiPlayer, string humanPlayer)
+    static public int[] FindBestMove(string[,] board, string aiPlayer, string humanPlayer)
     {
         int bestScore = int.MinValue;
         int[] bestMove = [-1, -1];
@@ -266,8 +277,8 @@ public static class AI
         //多线程并行计算
         var moveScores = sortedMoves.AsParallel().Select(move =>
         {
-            List<List<string>> parallelBoard = DeepCopyBoard(board);
-            parallelBoard[move[0]][move[1]] = aiPlayer;
+            string[,] parallelBoard = DeepCopyBoard(board);
+            parallelBoard[move[0],move[1]] = aiPlayer;
             int moveScore = MiniMax(parallelBoard, DEPTH - 1, false, aiPlayer, humanPlayer, int.MinValue, int.MaxValue);
             return new { Move = move, Score = moveScore };
         }).ToList();
@@ -287,19 +298,18 @@ public static class AI
             Console.OutputEncoding = Encoding.UTF8;
 
             //棋盘大小为15x15
-            const int BOARD = 15;
+            const int BOARD_SIZE = 15;
 
             //初始化棋盘
-            List<List<string>> updatedboard = [];
-            for (int i = 0; i < BOARD; i++)
+            string[,] updatedBoard = new string[BOARD_SIZE, BOARD_SIZE];
+            for (int i = 0; i < BOARD_SIZE; i++)
             {
-                updatedboard.Add([]);
-                for (int j = 0; j < BOARD; j++)
+                for (int j = 0; j < BOARD_SIZE; j++)
                 {
-                    updatedboard[i].Add("+");
+                    updatedBoard[i, j] = "+";
                 }
             }
-
+            
             bool IsGameOver = false;
             while (!IsGameOver)
             {
@@ -308,15 +318,19 @@ public static class AI
                     Console.WriteLine("你执黑，请输入坐标：");
                     string[] input = Console.ReadLine().Split(" ");
                     int[] blackMove = Array.ConvertAll(input, int.Parse);
-                    if (updatedboard[15 - blackMove[1]][blackMove[0] - 1] == "+")
+                    if (updatedBoard[15 - blackMove[1], blackMove[0] - 1] == "+")
                     {
-                        updatedboard[15 - blackMove[1]][blackMove[0] - 1] = "@";
+                        updatedBoard[15 - blackMove[1], blackMove[0] - 1] = "@";
 
-                        foreach (var row in updatedboard)
+                        for (int i = 0; i < BOARD_SIZE; i++)
                         {
-                            Console.WriteLine(string.Join("", row));
+                            for(int j=0; j < BOARD_SIZE; j++)
+                            {
+                                Console.Write(updatedBoard[i, j]);
+                            }
+                            Console.WriteLine();
                         }
-                        if (Evaluate.CheckWin(blackMove, "@", updatedboard))
+                        if (Evaluate.CheckWin(blackMove, "@", updatedBoard))
                         {
                             Console.WriteLine("黑棋获胜！");
                             IsGameOver = true;
@@ -334,17 +348,21 @@ public static class AI
                 {
                     Console.WriteLine("AI执白...");
 
-                    int[] bestMove = AI.FindBestMove(updatedboard, "O", "@");
+                    int[] bestMove = AI.FindBestMove(updatedBoard, "O", "@");
                     int[] whiteMove = [bestMove[1] + 1, 15 - bestMove[0]];
-                    if (updatedboard[bestMove[0]][bestMove[1]] == "+")
+                    if (updatedBoard[bestMove[0], bestMove[1]] == "+")
                     {
-                        updatedboard[bestMove[0]][bestMove[1]] = "O";
+                        updatedBoard[bestMove[0], bestMove[1]] = "O";
 
-                        foreach (var row in updatedboard)
+                        for (int i = 0; i < BOARD_SIZE; i++)
                         {
-                            Console.WriteLine(string.Join("", row));
+                            for (int j = 0; j < BOARD_SIZE; j++)
+                            {
+                                Console.Write(updatedBoard[i, j]);
+                            }
+                            Console.WriteLine();
                         }
-                        if (Evaluate.CheckWin(whiteMove, "O", updatedboard))
+                        if (Evaluate.CheckWin(whiteMove, "O", updatedBoard))
                         {
                             Console.WriteLine("白棋获胜！");
                             IsGameOver = true;
