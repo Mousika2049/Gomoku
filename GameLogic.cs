@@ -2,103 +2,160 @@
 
 namespace GomokuAI
 {
-    // 用于传递移动信息的简单结构
+    // 用结构类型表示落点，值类型栈分配，GC压力小
     public struct Move
     {
         public int Row { get; set; }
-        public int Col { get; set; }
+        public int Column { get; set; }
         public int Score { get; set; }
     }
 
     public class Evaluate
     {
+        //边界检查辅助函数 
         static private bool IsOnBoard(int r, int c)
         {
             return r >= 0 && r < 15 && c >= 0 && c < 15;
         }
 
-        // 统一使用 [row, col] 坐标系
-        static public bool CheckWin(int r, int c, string player, string[,] board)
+        static public bool CheckWin(int row, int column, string player, string[,] board)
         {
-            // 方向：水平(0,1), 垂直(1,0), 主对角(1,1), 副对角(1,-1)
+            //directions参数
+            //水平 (1,0)
+            //垂直 (0,1)
+            //主对角线 (1,-1)
+            //斜对角线 (1,1)
             int[][] directions = [[0, 1], [1, 0], [1, 1], [1, -1]];
 
-            foreach (var dir in directions)
+            foreach (var direction in directions)
             {
                 int count = 1;
-                int dr = dir[0];
-                int dc = dir[1];
+                int directionRow = direction[0];
+                int directionColumn = direction[1];
 
-                // 向一个方向延伸
                 for (int i = 1; i <= 4; i++)
                 {
-                    int nr = r + i * dr;
-                    int nc = c + i * dc;
-                    if (IsOnBoard(nr, nc) && board[nr, nc] == player) count++;
-                    else break;
-                }
-                // 向相反方向延伸
-                for (int i = 1; i <= 4; i++)
-                {
-                    int nr = r - i * dr;
-                    int nc = c - i * dc;
-                    if (IsOnBoard(nr, nc) && board[nr, nc] == player) count++;
-                    else break;
+                    int newRow = row + i * directionRow;
+                    int newColumn = column + i * directionColumn;
+                    if (IsOnBoard(newRow, newColumn) && board[newRow, newColumn] == player)
+                    {
+                        count++;
+                    }
+                    else
+                    {
+                        break;
+                    }
                 }
 
-                if (count >= 5) return true;
+                for (int i = 1; i <= 4; i++)
+                {
+                    int newRow = row - i * directionRow;
+                    int newColumn = column - i * directionColumn;
+                    if (IsOnBoard(newRow, newColumn) && board[newRow, newColumn] == player)
+                    {
+                        count++;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                if (count >= 5)
+                {
+                    return true;
+                }
             }
             return false;
         }
 
+        //权重计分板(ai视角，因为要模拟落点算分)
         static private readonly Dictionary<int, int> aiPatternScore = new()
         {
-            {5, 1000000}, {4, 10000}, {3, 1000}, {2, 100}, {1, 10}
+            {5, 1000000}, 
+            {4, 10000}, 
+            {3, 1000}, 
+            {2, 100}, 
+            {1, 10}
         };
         static private readonly Dictionary<int, int> humanPatternScore = new()
         {
-            {5, -1000000}, {4, -50000}, {3, -5000}, {2, -500}, {1, -10}
+            {5, -1000000}, 
+            {4, -50000}, 
+            {3, -5000}, 
+            {2, -500}, 
+            {1, -10}
         };
 
-        static public int EvaluateBoard(string[,] board, string aiPlayer, string humanPlayer)
-        {
-            int overallScore = 0;
-            // 这里的逻辑保持不变，只要遍历整个数组即可
-            // 水平
-            for (int r = 0; r < 15; r++)
-                for (int c = 0; c <= 10; c++)
-                    overallScore += GetWindowScore(board, r, c, 0, 1, aiPlayer, humanPlayer);
-            // 垂直
-            for (int r = 0; r <= 10; r++)
-                for (int c = 0; c < 15; c++)
-                    overallScore += GetWindowScore(board, r, c, 1, 0, aiPlayer, humanPlayer);
-            // 主对角线
-            for (int r = 0; r <= 10; r++)
-                for (int c = 0; c <= 10; c++)
-                    overallScore += GetWindowScore(board, r, c, 1, 1, aiPlayer, humanPlayer);
-            // 副对角线
-            for (int r = 0; r <= 10; r++)
-                for (int c = 4; c < 15; c++)
-                    overallScore += GetWindowScore(board, r, c, 1, -1, aiPlayer, humanPlayer);
-
-            return overallScore;
-        }
-
-        static int GetWindowScore(string[,] board, int startR, int startC, int dr, int dc, string ai, string human)
+        static int GetWindowScore(string[,] board, int initialRow, int initialColumn, int directionRow, int directionColumn, string ai, string human)
         {
             int aiCount = 0;
             int humanCount = 0;
             for (int i = 0; i < 5; i++)
             {
-                string cell = board[startR + i * dr, startC + i * dc];
-                if (cell == ai) aiCount++;
-                else if (cell == human) humanCount++;
+                string piece = board[initialRow + i * directionRow, initialColumn + i * directionColumn];
+                if (piece == ai)
+                {
+                    aiCount++;
+                }
+                else if (piece == human)
+                {
+                    humanCount++;
+                }
             }
 
-            if (aiCount > 0 && humanCount > 0) return 0;
-            if (aiCount > 0) return aiPatternScore[aiCount];
-            if (humanCount > 0) return humanPatternScore[humanCount];
+            if (aiCount > 0 && humanCount > 0)
+            {
+                return 0;
+            }
+            if (aiCount > 0)
+            {
+                return aiPatternScore[aiCount];
+            }
+            if (humanCount > 0)
+            {
+                return humanPatternScore[humanCount];
+            }
             return 0;
+        }
+
+        //统计棋局评分
+        static public int EvaluateBoard(string[,] board, string aiPlayer, string humanPlayer)
+        {
+            int overallScore = 0;
+            //水平
+            for (int r = 0; r < 15; r++)
+            {
+                for (int c = 0; c <= 10; c++)
+                {
+                    overallScore += GetWindowScore(board, r, c, 0, 1, aiPlayer, humanPlayer);
+                }
+            }
+            //垂直
+            for (int r = 0; r <= 10; r++)
+            {
+                for (int c = 0; c < 15; c++)
+                {
+                    overallScore += GetWindowScore(board, r, c, 1, 0, aiPlayer, humanPlayer);
+                }
+            }
+            //主对角线
+            for (int r = 0; r <= 10; r++)
+            {
+                for (int c = 0; c <= 10; c++)
+                {
+                    overallScore += GetWindowScore(board, r, c, 1, 1, aiPlayer, humanPlayer);
+                }
+            }
+            //副对角线
+            for (int r = 0; r <= 10; r++)
+            {
+                for (int c = 4; c < 15; c++)
+                {
+                    overallScore += GetWindowScore(board, r, c, 1, -1, aiPlayer, humanPlayer);
+                }
+            }
+            return overallScore;
         }
     }
 
@@ -106,25 +163,25 @@ namespace GomokuAI
     {
         static public List<Move> GetOptimizedMoves(string[,] board, string aiPlayer, string humanPlayer)
         {
+            //设置一个搜索窗口，将搜索范围缩小到有棋子的周围一定区域，减少无用的循环次数
+            //二维布尔数组如果不声明布尔值，默认值是false
             bool[,] searchWindow = new bool[15, 15];
-            bool hasPiece = false;
-
             for (int r = 0; r < 15; r++)
             {
                 for (int c = 0; c < 15; c++)
                 {
                     if (board[r, c] != "+")
                     {
-                        hasPiece = true;
-                        for (int rr = -2; rr <= 2; rr++)
+                        //扫描周围5x5区域
+                        for (int a = -2; a <= 2; a++)
                         {
-                            for (int cc = -2; cc <= 2; cc++)
+                            for (int b = -2; b <= 2; b++)
                             {
-                                int nr = r + rr;
-                                int nc = c + cc;
-                                if (nr >= 0 && nr < 15 && nc >= 0 && nc < 15 && board[nr, nc] == "+")
+                                int newRow = r + a;
+                                int newColumn = c + b;
+                                if (newRow >= 0 && newRow < 15 && newColumn >= 0 && newColumn < 15 && board[newRow, newColumn] == "+")
                                 {
-                                    searchWindow[nr, nc] = true;
+                                    searchWindow[newRow, newColumn] = true;
                                 }
                             }
                         }
@@ -132,67 +189,78 @@ namespace GomokuAI
                 }
             }
 
-            // 如果棋盘是空的（第一步），下在天元
-            if (!hasPiece) return new List<Move> { new Move { Row = 7, Col = 7, Score = 0 } };
 
-            List<Move> moves = new();
+            List<Move> moves = [];
             for (int r = 0; r < 15; r++)
             {
                 for (int c = 0; c < 15; c++)
                 {
                     if (searchWindow[r, c])
                     {
-                        // 简单的启发式排序：先评估一层
+                        // 先简单评估盘面分，排序，加快剪枝
                         board[r, c] = aiPlayer;
-                        int score = Evaluate.EvaluateBoard(board, aiPlayer, humanPlayer); // 简化：只看当前盘面分
+                        int score = Evaluate.EvaluateBoard(board, aiPlayer, humanPlayer); 
                         board[r, c] = "+";
-                        moves.Add(new Move { Row = r, Col = c, Score = score });
+                        moves.Add(new Move { Row = r, Column = c, Score = score });
                     }
                 }
             }
-            // 降序排列，让更有希望的点先搜
             return moves.OrderByDescending(m => m.Score).ToList();
         }
 
         static public int MiniMax(string[,] board, int depth, bool isMaximizing, string aiPlayer, string humanPlayer, int alpha, int beta)
         {
             int score = Evaluate.EvaluateBoard(board, aiPlayer, humanPlayer);
-            if (Math.Abs(score) >= 100000) return score; // 胜负已分
-            if (depth == 0) return score;
+            //如果模拟下一子能够凑成5子，说明已经赢了或者输了，不需要递归模拟
+            if (Math.Abs(score) >= 100000)
+            {
+                return score;
+            }
+            if (depth == 0)
+            {
+                return score;
+            }
 
-            // 在递归层可以稍微减少搜索范围或不重新排序以节省时间，这里沿用你的逻辑
             var moves = GetOptimizedMoves(board, aiPlayer, humanPlayer);
 
             if (isMaximizing)
             {
-                int maxEval = int.MinValue;
+                int bestScore = int.MinValue;
                 foreach (var move in moves)
                 {
-                    board[move.Row, move.Col] = aiPlayer;
+                    board[move.Row, move.Column] = aiPlayer;
                     int eval = MiniMax(board, depth - 1, false, aiPlayer, humanPlayer, alpha, beta);
-                    board[move.Row, move.Col] = "+";
-                    maxEval = Math.Max(maxEval, eval);
+                    board[move.Row, move.Column] = "+";
+                    bestScore = Math.Max(bestScore, eval);
                     alpha = Math.Max(alpha, eval);
-                    if (beta <= alpha) break;
+
+                    if (beta <= alpha)
+                    {
+                        break;
+                    }
                 }
-                return maxEval;
+                return bestScore;
             }
             else
             {
-                int minEval = int.MaxValue;
+                int bestScore = int.MaxValue;
                 foreach (var move in moves)
                 {
-                    board[move.Row, move.Col] = humanPlayer;
+                    board[move.Row, move.Column] = humanPlayer;
                     int eval = MiniMax(board, depth - 1, true, aiPlayer, humanPlayer, alpha, beta);
-                    board[move.Row, move.Col] = "+";
-                    minEval = Math.Min(minEval, eval);
+                    board[move.Row, move.Column] = "+";
+                    bestScore = Math.Min(bestScore, eval);
                     beta = Math.Min(beta, eval);
-                    if (beta <= alpha) break;
+                    if (beta <= alpha)
+                    {
+                        break;
+                    }
                 }
-                return minEval;
+                return bestScore;
             }
         }
 
+        //添加辅助的深拷贝函数，目的是多线程
         static private string[,] DeepCopyBoard(string[,] board)
         {
             return (string[,])board.Clone();
@@ -209,9 +277,9 @@ namespace GomokuAI
             Parallel.ForEach(possibleMoves, move =>
             {
                 string[,] tempBoard = DeepCopyBoard(board);
-                tempBoard[move.Row, move.Col] = aiPlayer;
+                tempBoard[move.Row, move.Column] = aiPlayer;
                 int score = MiniMax(tempBoard, DEPTH - 1, false, aiPlayer, humanPlayer, int.MinValue, int.MaxValue);
-                results.Add(new Move { Row = move.Row, Col = move.Col, Score = score });
+                results.Add(new Move { Row = move.Row, Column = move.Column, Score = score });
             });
 
             // 找到分数最高的

@@ -104,10 +104,10 @@
 
                 MainThread.BeginInvokeOnMainThread(async () =>
                 {
-                    PlacePiece(bestMove.Row, bestMove.Col, "O");
+                    PlacePiece(bestMove.Row, bestMove.Column, "O");
                     AiThinkingIndicator.IsRunning = false;
 
-                    if (Evaluate.CheckWin(bestMove.Row, bestMove.Col, "O", _board))
+                    if (Evaluate.CheckWin(bestMove.Row, bestMove.Column, "O", _board))
                     {
                         StatusLabel.Text = "白棋获胜！";
                         _isGameOver = true;
