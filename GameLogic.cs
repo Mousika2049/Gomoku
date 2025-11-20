@@ -272,7 +272,7 @@ namespace GomokuAI
             var possibleMoves = GetOptimizedMoves(board, aiPlayer, humanPlayer);
 
             // 并行计算
-            var results = new ConcurrentBag<Move>();
+            var results = new ConcurrentBag<Move>(); //线程安全
 
             Parallel.ForEach(possibleMoves, move =>
             {
