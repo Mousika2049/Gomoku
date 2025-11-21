@@ -5,7 +5,7 @@ namespace GomokuAI
     public class BoardDrawable : IDrawable
     {
         // 修改点1：加了 ?，允许初始为空，避免编译器报错
-        public string[,]? BoardState { get; set; }
+        public byte[,]? BoardState { get; set; }
         public Point LastMove { get; set; } = new Point(-1, -1);
 
         public void Draw(ICanvas canvas, RectF dirtyRect)
@@ -57,20 +57,20 @@ namespace GomokuAI
             {
                 for (int c = 0; c < 15; c++)
                 {
-                    string cell = BoardState[r, c];
-                    if (cell == "+") continue;
+                    byte cell = BoardState[r, c];
+                    if (cell == Piece.EMPTY) continue;
 
                     float cx = padding + c * cellSize;
                     float cy = padding + r * cellSize;
 
-                    if (cell == "@") // 黑棋
+                    if (cell == Piece.BLACK_PIECE) // 黑棋
                     {
                         canvas.FillColor = Colors.Black;
                         canvas.FillCircle(cx, cy, pieceRadius);
                         canvas.FillColor = Color.FromArgb("#50FFFFFF");
                         canvas.FillCircle(cx - pieceRadius * 0.3f, cy - pieceRadius * 0.3f, pieceRadius * 0.2f);
                     }
-                    else if (cell == "O") // 白棋
+                    else if (cell == Piece.WHITE_PIECE) // 白棋
                     {
                         canvas.FillColor = Colors.White;
                         canvas.FillCircle(cx, cy, pieceRadius);

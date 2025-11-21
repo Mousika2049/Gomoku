@@ -2,7 +2,15 @@
 
 namespace GomokuAI
 {
-    // 用结构类型表示落点，值类型栈分配，GC压力小
+    //棋子表示从string类改成byte型，占用内存大幅减少
+    public static class Piece
+    {
+        public const byte EMPTY = 0;
+        public const byte BLACK_PIECE = 1;
+        public const byte WHITE_PIECE = 2;
+    }
+
+    //用结构类型表示落点，值类型栈分配，GC压力小
     public struct Move
     {
         public int Row { get; set; }
@@ -18,7 +26,7 @@ namespace GomokuAI
             return r >= 0 && r < 15 && c >= 0 && c < 15;
         }
 
-        static public bool CheckWin(int row, int column, string player, string[,] board)
+        static public bool CheckWin(int row, int column, byte player, byte[,] board)
         {
             //directions参数
             //水平 (1,0)
@@ -87,18 +95,18 @@ namespace GomokuAI
             {1, -10}
         };
 
-        static int GetWindowScore(string[,] board, int initialRow, int initialColumn, int directionRow, int directionColumn, string ai, string human)
+        static int GetWindowScore(byte[,] board, int initialRow, int initialColumn, int directionRow, int directionColumn, byte aiPlayer, byte humanPlayer)
         {
             int aiCount = 0;
             int humanCount = 0;
             for (int i = 0; i < 5; i++)
             {
-                string piece = board[initialRow + i * directionRow, initialColumn + i * directionColumn];
-                if (piece == ai)
+                byte piece = board[initialRow + i * directionRow, initialColumn + i * directionColumn];
+                if (piece == aiPlayer)
                 {
                     aiCount++;
                 }
-                else if (piece == human)
+                else if (piece == humanPlayer)
                 {
                     humanCount++;
                 }
@@ -120,7 +128,7 @@ namespace GomokuAI
         }
 
         //统计棋局评分
-        static public int EvaluateBoard(string[,] board, string aiPlayer, string humanPlayer)
+        static public int EvaluateBoard(byte[,] board, byte aiPlayer, byte humanPlayer)
         {
             int overallScore = 0;
             //水平
@@ -161,17 +169,19 @@ namespace GomokuAI
 
     public static class AI
     {
-        static public List<Move> GetOptimizedMoves(string[,] board, string aiPlayer, string humanPlayer)
+        static public List<Move> GetOptimizedMoves(byte[,] board, byte aiPlayer, byte humanPlayer)
         {
             //设置一个搜索窗口，将搜索范围缩小到有棋子的周围一定区域，减少无用的循环次数
             //二维布尔数组如果不声明布尔值，默认值是false
             bool[,] searchWindow = new bool[15, 15];
+            bool hasPiece=false;
             for (int r = 0; r < 15; r++)
             {
                 for (int c = 0; c < 15; c++)
                 {
-                    if (board[r, c] != "+")
+                    if (board[r, c] != Piece.EMPTY)
                     {
+                        hasPiece = true;
                         //扫描周围5x5区域
                         for (int a = -2; a <= 2; a++)
                         {
@@ -179,7 +189,7 @@ namespace GomokuAI
                             {
                                 int newRow = r + a;
                                 int newColumn = c + b;
-                                if (newRow >= 0 && newRow < 15 && newColumn >= 0 && newColumn < 15 && board[newRow, newColumn] == "+")
+                                if (newRow >= 0 && newRow < 15 && newColumn >= 0 && newColumn < 15 && board[newRow, newColumn] == Piece.EMPTY)
                                 {
                                     searchWindow[newRow, newColumn] = true;
                                 }
@@ -187,6 +197,12 @@ namespace GomokuAI
                         }
                     }
                 }
+            }
+
+            //如果AI先手，默认下在天元位
+            if (!hasPiece)
+            {
+                return [new() { Row = 7, Column = 7, Score = 0 }];
             }
 
 
@@ -200,7 +216,7 @@ namespace GomokuAI
                         // 先简单评估盘面分，排序，加快剪枝
                         board[r, c] = aiPlayer;
                         int score = Evaluate.EvaluateBoard(board, aiPlayer, humanPlayer);
-                        board[r, c] = "+";
+                        board[r, c] = Piece.EMPTY;
                         moves.Add(new Move { Row = r, Column = c, Score = score });
                     }
                 }
@@ -208,7 +224,7 @@ namespace GomokuAI
             return moves.OrderByDescending(m => m.Score).ToList();
         }
 
-        static public int MiniMax(string[,] board, int depth, bool isMaximizing, string aiPlayer, string humanPlayer, int alpha, int beta)
+        static public int MiniMax(byte[,] board, int depth, bool isMaximizing, byte aiPlayer, byte humanPlayer, int alpha, int beta)
         {
             int score = Evaluate.EvaluateBoard(board, aiPlayer, humanPlayer);
             //如果模拟下一子能够凑成5子，说明已经赢了或者输了，不需要递归模拟
@@ -230,7 +246,7 @@ namespace GomokuAI
                 {
                     board[move.Row, move.Column] = aiPlayer;
                     int eval = MiniMax(board, depth - 1, false, aiPlayer, humanPlayer, alpha, beta);
-                    board[move.Row, move.Column] = "+";
+                    board[move.Row, move.Column] = Piece.EMPTY;
                     bestScore = Math.Max(bestScore, eval);
                     alpha = Math.Max(alpha, eval);
 
@@ -248,7 +264,7 @@ namespace GomokuAI
                 {
                     board[move.Row, move.Column] = humanPlayer;
                     int eval = MiniMax(board, depth - 1, true, aiPlayer, humanPlayer, alpha, beta);
-                    board[move.Row, move.Column] = "+";
+                    board[move.Row, move.Column] = Piece.EMPTY;
                     bestScore = Math.Min(bestScore, eval);
                     beta = Math.Min(beta, eval);
                     if (beta <= alpha)
@@ -261,12 +277,12 @@ namespace GomokuAI
         }
 
         //添加辅助的深拷贝函数，目的是多线程
-        static private string[,] DeepCopyBoard(string[,] board)
+        static private byte[,] DeepCopyBoard(byte[,] board)
         {
-            return (string[,])board.Clone();
+            return (byte[,])board.Clone();
         }
 
-        public static Move FindBestMove(string[,] board, string aiPlayer, string humanPlayer)
+        public static Move FindBestMove(byte[,] board, byte aiPlayer, byte humanPlayer)
         {
             const int DEPTH = 4;
             var possibleMoves = GetOptimizedMoves(board, aiPlayer, humanPlayer);
@@ -276,7 +292,7 @@ namespace GomokuAI
 
             Parallel.ForEach(possibleMoves, move =>
             {
-                string[,] tempBoard = DeepCopyBoard(board);
+                byte[,] tempBoard = DeepCopyBoard(board);
                 tempBoard[move.Row, move.Column] = aiPlayer;
                 int score = MiniMax(tempBoard, DEPTH - 1, false, aiPlayer, humanPlayer, int.MinValue, int.MaxValue);
                 results.Add(new Move { Row = move.Row, Column = move.Column, Score = score });
