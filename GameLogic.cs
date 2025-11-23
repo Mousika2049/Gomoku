@@ -78,23 +78,16 @@ namespace GomokuAI
         }
 
         //权重计分板(ai视角，因为要模拟落点算分)
-        static private readonly Dictionary<int, int> aiPatternScore = new()
-        {
-            {5, 1000000},
-            {4, 10000},
-            {3, 1000},
-            {2, 100},
-            {1, 10}
-        };
-        static private readonly Dictionary<int, int> humanPatternScore = new()
-        {
-            {5, -1000000},
-            {4, -50000},
-            {3, -5000},
-            {2, -500},
-            {1, -10}
-        };
-
+        //索引代表连子数，值代表权重分
+        static private readonly int[] aiPatternScore =
+        [
+            0, 10, 100, 1000, 10000, 1000000
+        ];
+        static private readonly int[] humanPatternScore =
+        [
+            0, -10, -500, -5000, -50000, -1000000
+        ];
+       
         static int GetWindowScore(byte[,] board, int initialRow, int initialColumn, int directionRow, int directionColumn, byte aiPlayer, byte humanPlayer)
         {
             int aiCount = 0;
@@ -174,7 +167,7 @@ namespace GomokuAI
             //设置一个搜索窗口，将搜索范围缩小到有棋子的周围一定区域，减少无用的循环次数
             //二维布尔数组如果不声明布尔值，默认值是false
             bool[,] searchWindow = new bool[15, 15];
-            bool hasPiece=false;
+            bool hasPiece = false;
             for (int r = 0; r < 15; r++)
             {
                 for (int c = 0; c < 15; c++)
@@ -279,12 +272,13 @@ namespace GomokuAI
         //添加辅助的深拷贝函数，目的是多线程
         static private byte[,] DeepCopyBoard(byte[,] board)
         {
-            return (byte[,])board.Clone();
+            byte[,] copy = new byte[15, 15];
+            Buffer.BlockCopy(board, 0, copy, 0, 225);
+            return copy;
         }
 
-        public static Move FindBestMove(byte[,] board, byte aiPlayer, byte humanPlayer)
+        public static Move FindBestMove(byte[,] board, byte aiPlayer, byte humanPlayer, int depth)
         {
-            const int DEPTH = 4;
             var possibleMoves = GetOptimizedMoves(board, aiPlayer, humanPlayer);
 
             // 并行计算
@@ -294,7 +288,7 @@ namespace GomokuAI
             {
                 byte[,] tempBoard = DeepCopyBoard(board);
                 tempBoard[move.Row, move.Column] = aiPlayer;
-                int score = MiniMax(tempBoard, DEPTH - 1, false, aiPlayer, humanPlayer, int.MinValue, int.MaxValue);
+                int score = MiniMax(tempBoard, depth - 1, false, aiPlayer, humanPlayer, int.MinValue, int.MaxValue);
                 results.Add(new Move { Row = move.Row, Column = move.Column, Score = score });
             });
 

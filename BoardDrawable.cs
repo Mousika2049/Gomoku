@@ -16,7 +16,7 @@ namespace GomokuAI
             canvas.Antialias = true;
 
             // 1. 绘制棋盘背景
-            canvas.FillColor = Color.FromArgb("#E3C998");
+            canvas.FillColor = Color.FromArgb("#F0D9B5");
             canvas.FillRectangle(dirtyRect);
 
             float padding = 20;

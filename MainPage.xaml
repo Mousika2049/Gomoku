@@ -3,56 +3,107 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:local="clr-namespace:GomokuAI"
              x:Class="GomokuAI.MainPage"
-             BackgroundColor="#333333">
+             BackgroundColor="#1F2937">
 
-    <Grid RowDefinitions="Auto, *, Auto" Padding="0,20">
+    <Grid RowDefinitions="Auto, *, Auto" Padding="20" RowSpacing="10">
 
-        <Label Grid.Row="0" 
-               Text="五子棋 AI 对战"
-               FontSize="28"
-               FontAttributes="Bold"
-               HorizontalOptions="Center"
-               TextColor="White"/>
+        <Grid Grid.Row="0" HeightRequest="70">
+            <Border StrokeShape="RoundRectangle 20" 
+                    StrokeThickness="0"
+                    BackgroundColor="#2D3748"
+                    Padding="20,0"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center">
+                <HorizontalStackLayout Spacing="15" 
+                                       HorizontalOptions="Center" 
+                                       VerticalOptions="Center"
+                                       HeightRequest="50">
+                    <ActivityIndicator x:Name="AiThinkingIndicator" 
+                                       IsRunning="False" 
+                                       Color="#E3C998"
+                                       HeightRequest="20" 
+                                       WidthRequest="20"/>
+
+                    <Label x:Name="StatusLabel" 
+                           Text="准备开始..." 
+                           FontSize="18"
+                           FontAttributes="Bold"
+                           TextColor="#E3C998"
+                           VerticalTextAlignment="Center"/>
+                </HorizontalStackLayout>
+            </Border>
+        </Grid>
 
         <ContentView Grid.Row="1" 
                      VerticalOptions="Center" 
-                     HorizontalOptions="Center"
-                     WidthRequest="380"
-                     HeightRequest="380">
+                     HorizontalOptions="Center">
 
-            <GraphicsView x:Name="BoardView"
-                          WidthRequest="380"
-                          HeightRequest="380">
+            <Border BackgroundColor="#DEB887" 
+                    Stroke="#8B4513"
+                    StrokeThickness="4"
+                    StrokeShape="RoundRectangle 10"
+                    Padding="5">
+                <Border.Shadow>
+                    <Shadow Brush="Black" Offset="5,5" Opacity="0.6" Radius="15"/>
+                </Border.Shadow>
 
-                <GraphicsView.Drawable>
-                    <local:BoardDrawable />
-                </GraphicsView.Drawable>
+                <GraphicsView x:Name="BoardView">
+                    <GraphicsView.WidthRequest>
+                        <OnPlatform x:TypeArguments="x:Double">
+                            <On Platform="WinUI, MacCatalyst" Value="400" />
+                            <On Platform="Android, iOS" Value="340" />
+                        </OnPlatform>
+                    </GraphicsView.WidthRequest>
+                    <GraphicsView.HeightRequest>
+                        <OnPlatform x:TypeArguments="x:Double">
+                            <On Platform="WinUI, MacCatalyst" Value="400" />
+                            <On Platform="Android, iOS" Value="340" />
+                        </OnPlatform>
+                    </GraphicsView.HeightRequest>
 
-                <GraphicsView.GestureRecognizers>
-                    <TapGestureRecognizer Tapped="OnBoardTapped" />
-                </GraphicsView.GestureRecognizers>
-            </GraphicsView>
-
+                    <GraphicsView.Drawable>
+                        <local:BoardDrawable />
+                    </GraphicsView.Drawable>
+                    <GraphicsView.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnBoardTapped" />
+                    </GraphicsView.GestureRecognizers>
+                </GraphicsView>
+            </Border>
         </ContentView>
 
-        <VerticalStackLayout Grid.Row="2" Spacing="15" Margin="20">
-            <Label x:Name="StatusLabel" 
-                   Text="执黑先行" 
-                   HorizontalOptions="Center"
-                   FontSize="20"
-                   TextColor="#E3C998"/>
+        <Grid Grid.Row="2" Margin="0,10,0,20">
+            <HorizontalStackLayout Spacing="20" HorizontalOptions="Center">
 
-            <ActivityIndicator x:Name="AiThinkingIndicator"
-                               IsRunning="False"
-                               Color="#E3C998"/>
+                <Button Text="↩ 悔 棋" 
+                        Clicked="OnUndoClicked"
+                        BackgroundColor="#4A5568"
+                        TextColor="White"
+                        FontAttributes="Bold"
+                        FontSize="16"
+                        CornerRadius="25"
+                        HeightRequest="50"
+                        WidthRequest="130">
+                    <Button.Shadow>
+                        <Shadow Brush="Black" Offset="2,2" Opacity="0.3"/>
+                    </Button.Shadow>
+                </Button>
 
-            <Button Text="重新开始" 
-                    Clicked="OnRestartClicked"
-                    BackgroundColor="#E3C998"
-                    TextColor="#333333"
-                    FontAttributes="Bold"
-                    CornerRadius="20"/>
-        </VerticalStackLayout>
+                <Button Text="🔄 新开局" 
+                        Clicked="OnRestartClicked"
+                        BackgroundColor="#E3C998"
+                        TextColor="#5D4037"
+                        FontAttributes="Bold"
+                        FontSize="16"
+                        CornerRadius="25"
+                        HeightRequest="50"
+                        WidthRequest="130">
+                    <Button.Shadow>
+                        <Shadow Brush="Black" Offset="2,2" Opacity="0.3"/>
+                    </Button.Shadow>
+                </Button>
+
+            </HorizontalStackLayout>
+        </Grid>
 
     </Grid>
 </ContentPage>

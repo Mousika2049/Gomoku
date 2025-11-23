@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="GomokuAI.StartPage"
+             Title="Gomoku AI">
+
+    <ContentPage.Background>
+        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#2C3E50" Offset="0.0" />
+            <GradientStop Color="#000000" Offset="1.0" />
+        </LinearGradientBrush>
+    </ContentPage.Background>
+
+    <Grid RowDefinitions="*, Auto, *">
+
+        <VerticalStackLayout Grid.Row="1" Spacing="30" VerticalOptions="Center" HorizontalOptions="Center">
+
+            <Border BackgroundColor="Transparent" 
+                    Stroke="#E3C998" 
+                    StrokeThickness="2"
+                    StrokeShape="RoundRectangle 15" 
+                    Padding="40,20"
+                    HorizontalOptions="Center">
+
+                <VerticalStackLayout>
+                    <Label Text="五子棋" 
+                           FontSize="48" 
+                           FontAttributes="Bold" 
+                           TextColor="#E3C998" 
+                           HorizontalOptions="Center"
+                           CharacterSpacing="5"/>
+                    <Label Text="GOMOKU AI" 
+                           FontSize="14" 
+                           TextColor="#AAAAAA" 
+                           HorizontalOptions="Center" 
+                           CharacterSpacing="8"/>
+                </VerticalStackLayout>
+            </Border>
+
+            <VerticalStackLayout Spacing="20" Margin="0,40,0,0" WidthRequest="300">
+
+                <Button Text="🐣 简单模式 (新手)" 
+                        Clicked="OnEasyClicked"
+                        BackgroundColor="#E3C998" 
+                        TextColor="#333333"
+                        FontAttributes="Bold"
+                        FontSize="16"
+                        HeightRequest="55"
+                        CornerRadius="28"
+                        MaximumWidthRequest="300">
+                    <Button.Shadow>
+                        <Shadow Brush="Black" Offset="2,2" Opacity="0.5"/>
+                    </Button.Shadow>
+                </Button>
+
+                <Button Text="🐯 中等模式 (进阶)" 
+                        Clicked="OnMediumClicked"
+                        BackgroundColor="#D4AC0D" 
+                        TextColor="White"
+                        FontAttributes="Bold"
+                        FontSize="16"
+                        HeightRequest="55"
+                        CornerRadius="28"
+                        MaximumWidthRequest="300">
+                    <Button.Shadow>
+                        <Shadow Brush="Black" Offset="2,2" Opacity="0.5"/>
+                    </Button.Shadow>
+                </Button>
+
+                <Button Text="🐲 困难模式 (大师)" 
+                        Clicked="OnHardClicked"
+                        BackgroundColor="#C0392B" 
+                        TextColor="White"
+                        FontAttributes="Bold"
+                        FontSize="16"
+                        HeightRequest="55"
+                        CornerRadius="28"
+                        MaximumWidthRequest="300">
+                    <Button.Shadow>
+                        <Shadow Brush="Black" Offset="2,2" Opacity="0.5"/>
+                    </Button.Shadow>
+                </Button>
+            </VerticalStackLayout>
+
+        </VerticalStackLayout>
+
+        <Label Grid.Row="2" Text="Powered by .NET MAUI" VerticalOptions="End" HorizontalOptions="Center" Margin="0,0,0,20" TextColor="#555555"/>
+    </Grid>
+</ContentPage>
